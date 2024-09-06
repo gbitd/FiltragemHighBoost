@@ -6,15 +6,7 @@ from skimage.filters import gaussian
 def high_boost_filter(image, boost_factor=1.5, sigma=1):
     # Converte a imagem para float
     image_float = img_as_float(image)
-    
-    # Se a imagem tiver mais de 2 dimensões (imagem colorida), aplica o filtro por canal
-    if image_float.ndim == 3:
-        blurred = np.zeros_like(image_float)
-        for i in range(image_float.shape[2]):
-            blurred[:, :, i] = gaussian(image_float[:, :, i], sigma=sigma)
-    else:
-        # Se for uma imagem em tons de cinza
-        blurred = gaussian(image_float, sigma=sigma)
+    blurred = gaussian(image_float, sigma=sigma)
     
     # Calcula a máscara de detalhes
     mask = image_float - blurred
