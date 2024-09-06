@@ -1,40 +1,11 @@
 import cv2  # Biblioteca para manipulação de imagens
 import numpy as np  # Biblioteca para operações numéricas
+from skimage.filters import rank
+from skimage.morphology import square
 
 def aplicar_filtro_media(image, kernel_size=3):
-    """
-    Aplica um filtro de média (suavização) em uma imagem.
-    
-    Parâmetros:
-    - image: Imagem de entrada em formato numpy array.
-    - kernel_size: Tamanho do kernel (quadrado) que será utilizado no filtro de média.
-    
-    Retorno:
-    - Imagem suavizada após a aplicação do filtro de média.
-    """
-    # Cria um kernel de média, onde cada valor é 1/(tamanho do kernel)
-    kernel = np.ones((kernel_size, kernel_size), dtype=float) / (kernel_size ** 2)
-    
-    # Obtém as dimensões da imagem
-    image_h, image_w = image.shape
-    
-    # Calcula o padding necessário para manter o tamanho da imagem após o filtro
-    pad_h, pad_w = kernel_size // 2, kernel_size // 2
-    
-    # Aplica padding à imagem original (com zeros nas bordas)
-    padded_image = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
-    
-    # Cria uma imagem de saída com as mesmas dimensões da imagem original
-    output_image = np.zeros_like(image, dtype=float)
-    
-    # Percorre cada pixel da imagem original
-    for i in range(image_h):
-        for j in range(image_w):
-            # Extrai a região correspondente ao kernel
-            region = padded_image[i:i + kernel_size, j:j + kernel_size]
-            
-            # Calcula a média dos valores na região e armazena no pixel correspondente
-            output_image[i, j] = np.sum(region * kernel)
+   
+    output_image = rank.mean(image, square(kernel_size))
     
     return output_image
 
