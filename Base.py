@@ -25,7 +25,7 @@ def adicionar_mascara_imagem(original_image, sharpness_mask, k=1.0):
 
 def main():
     # Carregar a imagem em escala de cinza
-    image = cv2.imread('teste01.tif', cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread('placa.tif', cv2.IMREAD_GRAYSCALE)
     
     if image is None:
         print("Erro ao carregar a imagem.")
