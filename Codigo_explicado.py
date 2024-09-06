@@ -1,95 +1,116 @@
-import cv2
-import numpy as np
+import cv2  # Biblioteca para manipulação de imagens
+import numpy as np  # Biblioteca para operações numéricas
 
-# Função para aplicar o filtro de média com fatiamento (sem loops explícitos)
 def aplicar_filtro_media(image, kernel_size=3):
     """
-    Aplica um filtro de média para suavizar (borrar) a imagem usando fatiamento.
+    Aplica um filtro de média (suavização) em uma imagem.
     
     Parâmetros:
-    - image: Imagem original (array 2D do numpy).
-    - kernel_size: Tamanho do kernel de suavização (deve ser ímpar).
+    - image: Imagem de entrada em formato numpy array.
+    - kernel_size: Tamanho do kernel (quadrado) que será utilizado no filtro de média.
     
     Retorno:
-    - Imagem suavizada (array 2D do numpy).
+    - Imagem suavizada após a aplicação do filtro de média.
     """
-    # Criar o kernel de média
+    # Cria um kernel de média, onde cada valor é 1/(tamanho do kernel)
     kernel = np.ones((kernel_size, kernel_size), dtype=float) / (kernel_size ** 2)
     
-    # Padding da imagem
-    pad_h, pad_w = kernel_size // 2, kernel_size // 2
-    padded_image = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
-
-    # Aplicar o filtro com fatiamento (convolução)
-    output_image = np.zeros_like(image)
+    # Obtém as dimensões da imagem
+    image_h, image_w = image.shape
     
-    # Usando fatiamento e somatório para aplicar o kernel de uma vez em blocos
-    for i in range(kernel_size):
-        for j in range(kernel_size):
-            output_image += padded_image[i:i + image.shape[0], j:j + image.shape[1]] * kernel[i, j]
-
+    # Calcula o padding necessário para manter o tamanho da imagem após o filtro
+    pad_h, pad_w = kernel_size // 2, kernel_size // 2
+    
+    # Aplica padding à imagem original (com zeros nas bordas)
+    padded_image = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
+    
+    # Cria uma imagem de saída com as mesmas dimensões da imagem original
+    output_image = np.zeros_like(image, dtype=float)
+    
+    # Percorre cada pixel da imagem original
+    for i in range(image_h):
+        for j in range(image_w):
+            # Extrai a região correspondente ao kernel
+            region = padded_image[i:i + kernel_size, j:j + kernel_size]
+            
+            # Calcula a média dos valores na região e armazena no pixel correspondente
+            output_image[i, j] = np.sum(region * kernel)
+    
     return output_image
 
-# Função para subtrair a imagem borrada da original (sem alterações, pois já é eficiente)
 def subtrair_imagem_borrada(original_image, blurred_image):
     """
-    Subtrai a imagem borrada da imagem original para gerar a máscara de nitidez.
+    Subtrai a imagem borrada da original para gerar a máscara de nitidez.
     
     Parâmetros:
-    - original_image: Imagem original (array 2D do numpy).
-    - blurred_image: Imagem borrada (array 2D do numpy).
+    - original_image: Imagem original sem suavização.
+    - blurred_image: Imagem suavizada (borrada).
     
     Retorno:
-    - Máscara de nitidez (array 2D do numpy).
+    - Máscara de nitidez.
     """
+    # Subtração simples da imagem borrada da imagem original
     sharpness_mask = original_image - blurred_image
     return sharpness_mask
 
-# Função para adicionar a máscara de nitidez à imagem original (sem alterações, pois já é eficiente)
 def adicionar_mascara_imagem(original_image, sharpness_mask, k=1.0):
     """
-    Adiciona a máscara de nitidez à imagem original para aplicar a filtragem high-boost.
+    Adiciona a máscara de nitidez à imagem original, aplicando o filtro high-boost.
     
     Parâmetros:
-    - original_image: Imagem original (array 2D do numpy).
-    - sharpness_mask: Máscara de nitidez (array 2D do numpy), gerada pela subtração da imagem borrada.
-    - k: Fator de amplificação da máscara (1.0 é a filtragem normal, >1.0 é a filtragem high-boost).
+    - original_image: Imagem original.
+    - sharpness_mask: Máscara de nitidez obtida pela subtração da imagem borrada.
+    - k: Fator de amplificação da máscara de nitidez (ajustável).
     
     Retorno:
-    - Imagem filtrada (array 2D do numpy).
+    - Imagem filtrada (high-boost) com a máscara de nitidez aplicada.
     """
+    # Adiciona a máscara amplificada pela constante k à imagem original
     filtered_image = original_image + k * sharpness_mask
-    return filtered_image
+    
+    # Clipa os valores para garantir que estejam no intervalo [0, 255]
+    filtered_image = np.clip(filtered_image, 0, 255)
+    
+    # Converte a imagem para o formato uint8 (valores inteiros entre 0 e 255)
+    return filtered_image.astype(np.uint8)
 
-# Função principal para executar o pipeline de filtragem
 def main():
     # Carregar a imagem em escala de cinza
-    image = cv2.imread('teste02.tif', cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread('celebro.tif', cv2.IMREAD_GRAYSCALE)
     
     if image is None:
+        # Verifica se houve erro ao carregar a imagem
         print("Erro ao carregar a imagem.")
         return
 
-    # Aplicar o filtro de suavização com fatiamento
+    # Converte a imagem para float para permitir operações com precisão
+    image_float = image.astype(float)
+
+    # Define o tamanho do kernel para o filtro de suavização
     kernel_size = 5
-    blurred_image = aplicar_filtro_media(image, kernel_size)
+    
+    # Aplica o filtro de média à imagem
+    blurred_image = aplicar_filtro_media(image_float, kernel_size)
 
-    # Subtrair a imagem borrada da original para criar a máscara de nitidez
-    sharpness_mask = subtrair_imagem_borrada(image, blurred_image)
+    # Calcula a máscara de nitidez subtraindo a imagem borrada da original
+    sharpness_mask = subtrair_imagem_borrada(image_float, blurred_image)
 
-    # Adicionar a máscara à imagem original para aplicar a filtragem high-boost
-    k = 1.5  # fator de amplificação (ajustável)
-    filtered_image = adicionar_mascara_imagem(image, sharpness_mask, k)
+    # Fator de amplificação da máscara de nitidez (ajustável)
+    k = 1.5
+    
+    # Aplica o filtro high-boost adicionando a máscara à imagem original
+    filtered_image = adicionar_mascara_imagem(image_float, sharpness_mask, k)
 
-    # Mostrar os resultados
+    # Mostra as imagens (original, borrada, máscara de nitidez e imagem filtrada)
     cv2.imshow("Imagem Original", image)
-    cv2.imshow("Imagem Borrada", blurred_image)
-    cv2.imshow("Máscara de Nitidez", sharpness_mask)
+    cv2.imshow("Imagem Borrada", blurred_image.astype(np.uint8))
+    cv2.imshow("Máscara de Nitidez", sharpness_mask.astype(np.uint8))
     cv2.imshow("Imagem Filtrada (High-Boost)", filtered_image)
 
-    # Aguardar o usuário fechar as janelas
+    # Espera o usuário fechar as janelas de visualização
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+# Executa o programa principal se este arquivo for executado diretamente
 if __name__ == "__main__":
     main()
